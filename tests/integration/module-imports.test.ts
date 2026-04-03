@@ -72,8 +72,8 @@ describe('Module import chain [COVERAGE]', () => {
 
     // All 10 placeholder classes should be instantiable
     expect(new GameEngine()).toBeInstanceOf(GameEngine);
-    expect(new AuthService()).toBeInstanceOf(AuthService);
-    expect(new PhotosService()).toBeInstanceOf(PhotosService);
+    expect(new AuthService('test-client-id')).toBeInstanceOf(AuthService);
+    expect(new PhotosService(new AuthService('test-client-id'))).toBeInstanceOf(PhotosService);
     expect(new PhotoCache()).toBeInstanceOf(PhotoCache);
     expect(new ScoreKeeper()).toBeInstanceOf(ScoreKeeper);
     expect(new BoardLayout(new CardRenderer())).toBeInstanceOf(BoardLayout);

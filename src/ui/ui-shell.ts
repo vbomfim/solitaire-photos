@@ -9,11 +9,15 @@
  * [CLEAN-CODE] Small methods, clear screen transitions.
  */
 import type { CardLocation, Difficulty, DifficultyConfig, GameState } from '../types';
+import type { CardBack } from '../types/google-photos';
 import { GameEngine } from '../game/engine';
 import { getDifficultyConfig } from '../game/difficulty';
 import { CardRenderer } from './card-renderer';
 import { BoardLayout } from './board-layout';
 import { DragController } from './drag-controller';
+import { AuthService } from '../services/auth-service';
+import { PhotosService } from '../services/photos-service';
+import { PhotoCache } from '../services/photo-cache';
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -41,10 +45,21 @@ export class UIShell {
   /** Selected card location for click-to-move. */
   private selectedLocation: CardLocation | null = null;
 
+  /* ── Google Photos integration ───────────────────────────────── */
+  private authService: AuthService | null = null;
+  private photosService: PhotosService | null = null;
+  private readonly photoCache: PhotoCache;
+  private cardBacks: CardBack[] = [];
+  private readonly clientId: string;
+
   constructor(container: HTMLElement) {
     this.container = container;
     this.engine = new GameEngine();
     this.cardRenderer = new CardRenderer();
+    this.photoCache = new PhotoCache();
+
+    // Read client ID from Vite env (empty string if not configured)
+    this.clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
   }
 
   /** Initialize the app — show the menu screen. */
@@ -106,13 +121,34 @@ export class UIShell {
     newGameBtn.addEventListener('click', () => this.startGame());
     menu.appendChild(newGameBtn);
 
-    // Google Photos placeholder
+    // Google Photos button
     const photosBtn = document.createElement('button');
     photosBtn.classList.add('menu__button', 'menu__button--secondary');
     photosBtn.setAttribute('data-action', 'connect-photos');
-    photosBtn.textContent = '📷 Connect Google Photos';
-    photosBtn.disabled = true;
+
+    if (this.photoCache.hasPhotos()) {
+      photosBtn.textContent = '📷 Change Photos';
+      photosBtn.disabled = false;
+      photosBtn.addEventListener('click', () => void this.connectPhotos());
+    } else if (this.clientId) {
+      photosBtn.textContent = '📷 Connect Google Photos';
+      photosBtn.disabled = false;
+      photosBtn.addEventListener('click', () => void this.connectPhotos());
+    } else {
+      photosBtn.textContent = '📷 Connect Google Photos';
+      photosBtn.disabled = true;
+      photosBtn.title = 'Configure Google Client ID to enable';
+    }
     menu.appendChild(photosBtn);
+
+    // Photo status indicator
+    if (this.photoCache.hasPhotos()) {
+      const status = document.createElement('p');
+      status.classList.add('menu__photo-status');
+      status.setAttribute('data-testid', 'photo-status');
+      status.textContent = `✅ ${String(this.cardBacks.length)} photos loaded as card backs`;
+      menu.appendChild(status);
+    }
 
     this.container.appendChild(menu);
   }
@@ -173,6 +209,9 @@ export class UIShell {
 
     // Start timer
     this.startTimer();
+
+    // Apply photo card backs if available
+    this.applyCardBacks();
 
     // Update displays
     this.updateDisplays();
@@ -493,6 +532,128 @@ export class UIShell {
       clearInterval(this.timerId);
       this.timerId = null;
     }
+  }
+
+  /* ── Google Photos integration ──────────────────────────────── */
+
+  /** Initialize the auth service and wire up expiry handling. */
+  private initAuthService(): void {
+    if (this.authService) return;
+    if (!this.clientId) return;
+
+    this.authService = new AuthService(this.clientId);
+    this.photosService = new PhotosService(this.authService);
+
+    this.authService.onTokenExpired(() => {
+      this.showTokenExpiryBanner();
+    });
+  }
+
+  /**
+   * Full Google Photos connection flow:
+   * 1. Load GIS script
+   * 2. Request OAuth token
+   * 3. Open Picker
+   * 4. Cache thumbnails
+   */
+  private async connectPhotos(): Promise<void> {
+    this.initAuthService();
+    if (!this.authService || !this.photosService) return;
+
+    try {
+      // Show loading state on button
+      const btn = this.container.querySelector<HTMLButtonElement>('[data-action="connect-photos"]');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Loading…';
+      }
+
+      await this.authService.loadGisScript();
+      await this.authService.requestToken();
+
+      const photos = await this.photosService.pickPhotos();
+
+      if (photos.length === 0) {
+        this.restorePhotosButton(btn);
+        return;
+      }
+
+      this.cardBacks = await this.photoCache.loadThumbnails(photos, {
+        width: 200,
+        height: 300,
+      });
+
+      // Refresh the menu to show photo status
+      this.showMenuScreen();
+    } catch (error: unknown) {
+      // Restore button on error
+      const btn = this.container.querySelector<HTMLButtonElement>('[data-action="connect-photos"]');
+      this.restorePhotosButton(btn);
+
+      // Only show error for non-cancellation errors
+      if (error instanceof Error && !error.message.includes('user-cancelled')) {
+        this.showError(error.message);
+      }
+    }
+  }
+
+  /** Restore the photos button text after loading/error. */
+  private restorePhotosButton(btn: HTMLButtonElement | null): void {
+    if (!btn) return;
+    btn.disabled = false;
+    btn.textContent = this.photoCache.hasPhotos() ? '📷 Change Photos' : '📷 Connect Google Photos';
+  }
+
+  /** Apply photo card backs to all face-down cards on the board. */
+  private applyCardBacks(): void {
+    if (this.cardBacks.length === 0) return;
+    const allCards = this.container.querySelectorAll<HTMLElement>('.card');
+    let index = 0;
+    for (const cardEl of allCards) {
+      const cardBack = this.photoCache.getCardBack(index);
+      if (cardBack) {
+        this.cardRenderer.setCardBack(cardEl, cardBack.thumbnailUrl);
+      }
+      index++;
+    }
+  }
+
+  /** Show a non-intrusive token expiry banner during gameplay. */
+  private showTokenExpiryBanner(): void {
+    // Only show during game (not menu)
+    const gameScreen = this.container.querySelector('.game');
+    if (!gameScreen) return;
+
+    // Don't add duplicate banners
+    if (this.container.querySelector('.token-expiry-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.classList.add('token-expiry-banner');
+    banner.setAttribute('data-testid', 'token-expiry-banner');
+    banner.innerHTML =
+      '<span>📷 Photo session expired. Photos still work — reconnect from menu for new photos.</span>';
+
+    const dismissBtn = document.createElement('button');
+    dismissBtn.textContent = '✕';
+    dismissBtn.classList.add('token-expiry-banner__dismiss');
+    dismissBtn.addEventListener('click', () => banner.remove());
+    banner.appendChild(dismissBtn);
+
+    gameScreen.prepend(banner);
+  }
+
+  /** Show a brief error message. */
+  private showError(message: string): void {
+    const existing = this.container.querySelector('.error-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.classList.add('error-toast');
+    toast.setAttribute('data-testid', 'error-toast');
+    toast.textContent = message;
+
+    this.container.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
   }
 
   /* ── Display updates ──────────────────────────────────────────── */

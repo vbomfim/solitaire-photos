@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solitaire Photos — Privacy Policy</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        max-width: 640px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.6;
+        color: #222;
+      }
+      h1 { color: #1a73e8; }
+      h2 { margin-top: 2rem; }
+      .highlight {
+        background: #e8f5e9;
+        border-left: 4px solid #4caf50;
+        padding: 1rem;
+        margin: 1rem 0;
+      }
+      a { color: #1a73e8; }
+      footer { margin-top: 3rem; border-top: 1px solid #ddd; padding-top: 1rem; font-size: 0.9rem; color: #666; }
+    </style>
+  </head>
+  <body>
+    <h1>♠ Solitaire Photos — Privacy Policy</h1>
+    <p><em>Last updated: 2025</em></p>
+
+    <div class="highlight">
+      <strong>Your photos never leave your browser.</strong>
+    </div>
+
+    <h2>What This App Does</h2>
+    <p>
+      Solitaire Photos is a Klondike solitaire game that optionally uses your
+      Google Photos as card back images. The entire application runs in your
+      browser — there is no server, no backend, and no data collection.
+    </p>
+
+    <h2>Google Photos Access</h2>
+    <p>When you choose to connect Google Photos, the app:</p>
+    <ul>
+      <li>Requests read-only access to photos you explicitly select via Google's Picker UI</li>
+      <li>Downloads thumbnail-sized copies of your selected photos directly to your browser</li>
+      <li>Converts thumbnails to local blob URLs (binary data stored in browser memory)</li>
+    </ul>
+
+    <h2>What We Store</h2>
+    <table>
+      <tr>
+        <th>Data</th>
+        <th>Where</th>
+        <th>Duration</th>
+      </tr>
+      <tr>
+        <td>OAuth access token</td>
+        <td>Browser memory (JavaScript variable)</td>
+        <td>Until page close or sign-out (~60 min max)</td>
+      </tr>
+      <tr>
+        <td>Photo thumbnails</td>
+        <td>Browser memory (blob URLs)</td>
+        <td>Until page close or photo change</td>
+      </tr>
+    </table>
+
+    <h2>What We Do NOT Do</h2>
+    <ul>
+      <li>❌ We do <strong>not</strong> store tokens in localStorage, cookies, or URLs</li>
+      <li>❌ We do <strong>not</strong> send your photos or data to any server</li>
+      <li>❌ We do <strong>not</strong> use analytics, tracking, or advertising</li>
+      <li>❌ We do <strong>not</strong> access photos you did not explicitly select</li>
+      <li>❌ We do <strong>not</strong> retain any data after you close the browser tab</li>
+    </ul>
+
+    <h2>OAuth Scope</h2>
+    <p>
+      This app requests the
+      <code>photospicker.mediaitems.readonly</code> scope, which only allows
+      reading photos that you explicitly choose in Google's picker interface.
+      It cannot browse, modify, or delete your photo library.
+    </p>
+
+    <h2>Third-Party Services</h2>
+    <p>
+      The only external service used is Google's Identity Services (for sign-in)
+      and the Google Photos Picker API (for photo selection). Both are governed
+      by <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>.
+    </p>
+
+    <h2>Open Source</h2>
+    <p>
+      This application is open source. You can inspect the code at
+      <a href="https://github.com/vbomfim/solitaire-photos">github.com/vbomfim/solitaire-photos</a>.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      For questions about this privacy policy, please open an issue on the
+      <a href="https://github.com/vbomfim/solitaire-photos/issues">GitHub repository</a>.
+    </p>
+
+    <footer>
+      <p><a href="/solitaire-photos/">← Back to Solitaire Photos</a></p>
+    </footer>
+  </body>
+</html>
