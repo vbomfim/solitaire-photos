@@ -1,0 +1,97 @@
+/**
+ * Global styles for Solitaire Photos.
+ *
+ * Uses CSS Custom Properties for theming.
+ * Component-specific styles will use CSS Modules (*.module.css).
+ */
+
+/* ── Custom Properties (Design Tokens) ───────────── */
+:root {
+  /* Colors */
+  --color-bg: #0d5016;
+  --color-bg-felt: #1a7a2e;
+  --color-text: #f0f0f0;
+  --color-accent: #ffd700;
+  --color-card-back: #1a3a6b;
+  --color-card-face: #ffffff;
+  --color-red-suit: #d32f2f;
+  --color-black-suit: #212121;
+
+  /* Card Dimensions */
+  --card-width: 100px;
+  --card-height: 145px;
+  --card-radius: 8px;
+  --card-gap: 16px;
+  --card-overlap: 28px;
+
+  /* Layout */
+  --board-padding: 24px;
+  --header-height: 56px;
+
+  /* Typography */
+  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* ── Reset ────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Base ─────────────────────────────────────────── */
+html,
+body {
+  height: 100%;
+  font-family: var(--font-family);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ───────────────────────────────────────── */
+header {
+  height: var(--header-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--board-padding);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+header h1 {
+  font-size: 1.5rem;
+  color: var(--color-accent);
+}
+
+header p {
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+/* ── Board ────────────────────────────────────────── */
+#board {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--board-padding);
+  background: radial-gradient(ellipse at center, var(--color-bg-felt) 0%, var(--color-bg) 100%);
+}
+
+.placeholder {
+  font-size: 1.25rem;
+  opacity: 0.6;
+  font-style: italic;
+}
