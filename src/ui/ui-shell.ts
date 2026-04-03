@@ -630,8 +630,19 @@ export class UIShell {
     const banner = document.createElement('div');
     banner.classList.add('token-expiry-banner');
     banner.setAttribute('data-testid', 'token-expiry-banner');
-    banner.innerHTML =
-      '<span>📷 Photo session expired. Photos still work — reconnect from menu for new photos.</span>';
+
+    const msg = document.createElement('span');
+    msg.textContent = '📷 Photo session expired. Photos still work.';
+    banner.appendChild(msg);
+
+    // Reconnect button — re-requests token without leaving the game
+    const reconnectBtn = document.createElement('button');
+    reconnectBtn.textContent = '🔄 Reconnect Now';
+    reconnectBtn.classList.add('token-expiry-banner__reconnect');
+    reconnectBtn.addEventListener('click', () => {
+      void this.handleReconnect(banner, reconnectBtn);
+    });
+    banner.appendChild(reconnectBtn);
 
     const dismissBtn = document.createElement('button');
     dismissBtn.textContent = '✕';
@@ -642,7 +653,24 @@ export class UIShell {
     gameScreen.prepend(banner);
   }
 
-  /** Show a brief error message. */
+  /** Attempt to re-acquire an OAuth token from within the game screen. */
+  private async handleReconnect(banner: HTMLElement, button: HTMLButtonElement): Promise<void> {
+    if (!this.authService) return;
+
+    button.disabled = true;
+    button.textContent = '⏳ Connecting…';
+
+    try {
+      await this.authService.loadGisScript();
+      await this.authService.requestToken();
+      banner.remove();
+    } catch {
+      button.disabled = false;
+      button.textContent = '🔄 Reconnect Now';
+    }
+  }
+
+  /** Show an error toast that persists until user dismisses it. */
   private showError(message: string): void {
     const existing = this.container.querySelector('.error-toast');
     if (existing) existing.remove();
@@ -650,10 +678,18 @@ export class UIShell {
     const toast = document.createElement('div');
     toast.classList.add('error-toast');
     toast.setAttribute('data-testid', 'error-toast');
-    toast.textContent = message;
+
+    const msg = document.createElement('span');
+    msg.textContent = message;
+    toast.appendChild(msg);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.classList.add('error-toast__close');
+    closeBtn.addEventListener('click', () => toast.remove());
+    toast.appendChild(closeBtn);
 
     this.container.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
   }
 
   /* ── Display updates ──────────────────────────────────────────── */
