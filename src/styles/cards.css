@@ -152,12 +152,6 @@
   border-radius: var(--card-radius);
 }
 
-/* ── Animation performance ───────────────────────────────────────── */
-
-.card {
-  will-change: transform;
-}
-
 /* ── Responsive card sizes ───────────────────────────────────────── */
 
 @media (max-width: 1024px) {

@@ -456,9 +456,19 @@ describe('UIShell — Undo and Hint', () => {
     const hintBtn = app.querySelector('[data-action="hint"]') as HTMLButtonElement;
     hintBtn.click();
 
-    // There should be at least one highlighted card (or no highlight if no moves)
-    // Just verify it doesn't throw
-    expect(true).toBe(true);
+    // If there's a valid hint, at least one card should be highlighted.
+    // If there are no valid moves, there should be no highlights.
+    // Either way, no highlighted card should be face-down.
+    const highlightedCards = app.querySelectorAll('.card--highlighted');
+    const hintTargets = app.querySelectorAll('.pile--hint-target');
+
+    // Both hint indicators should be present together, or neither
+    if (highlightedCards.length > 0) {
+      expect(hintTargets.length).toBeGreaterThan(0);
+    }
+    for (const card of highlightedCards) {
+      expect(card.classList.contains('card--face-down')).toBe(false);
+    }
   });
 });
 
@@ -572,8 +582,8 @@ describe('UIShell — Event delegation', () => {
       emptyFoundation.click();
     }
 
-    // The selected class might be removed (if move was attempted)
-    // Either way it should not throw
-    expect(true).toBe(true);
+    // After clicking the empty pile, selection should be cleared
+    // (the move was attempted and cleared the selection regardless of outcome)
+    expect(faceUpCard.classList.contains('card--selected')).toBe(false);
   });
 });

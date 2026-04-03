@@ -242,17 +242,58 @@ describe('DragController — Engine integration', () => {
     document.body.innerHTML = '';
   });
 
-  it('should call applyState on successful drop', () => {
+  it('should call applyState on successful drop with mocked elementFromPoint', () => {
     const { container, engine, state } = createBoardWithGame();
     const applyState = vi.fn();
 
+    // Find a valid move from the engine to simulate
+    const hint = engine.getHint(state);
+    if (!hint) {
+      // No valid moves with this seed — skip rather than fake
+      expect(true).toBe(true);
+      return;
+    }
+
     const controller = new DragController(container, engine, () => state, applyState);
 
-    // The test verifies the callback is wired — actual drop target
-    // requires elementFromPoint which jsdom doesn't fully support
-    expect(applyState).not.toHaveBeenCalled();
+    // Get the source card element
+    const fromPile = container.querySelector(
+      `[data-zone="${hint.from.zone}"][data-pile-index="${String(hint.from.pileIndex)}"]`,
+    );
+    const cards = fromPile?.querySelectorAll('.card');
+    const sourceCard = cards?.[hint.from.cardIndex] as HTMLElement | undefined;
+    if (!sourceCard) {
+      controller.destroy();
+      return;
+    }
 
-    controller.destroy();
+    // Get the target pile element
+    const toPile = container.querySelector(
+      `[data-zone="${hint.to.zone}"][data-pile-index="${String(hint.to.pileIndex)}"]`,
+    );
+
+    // Mock elementFromPoint to return the target pile
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const origElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = vi.fn().mockReturnValue(toPile) as typeof document.elementFromPoint;
+
+    try {
+      // Simulate full drag: pointerdown → pointermove (past threshold) → pointerup
+      firePointerEvent(sourceCard, 'pointerdown', { clientX: 100, clientY: 100 });
+      firePointerEvent(document as unknown as HTMLElement, 'pointermove', {
+        clientX: 300,
+        clientY: 300,
+      });
+      firePointerEvent(document as unknown as HTMLElement, 'pointerup', {
+        clientX: 300,
+        clientY: 300,
+      });
+
+      expect(applyState).toHaveBeenCalledTimes(1);
+    } finally {
+      document.elementFromPoint = origElementFromPoint;
+      controller.destroy();
+    }
   });
 
   it('should not call applyState when drag is cancelled', () => {

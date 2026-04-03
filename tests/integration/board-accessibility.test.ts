@@ -10,10 +10,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UIShell } from '../../src/ui/ui-shell';
 import { CardRenderer } from '../../src/ui/card-renderer';
-import { BoardLayout } from '../../src/ui/board-layout';
-import { GameEngine } from '../../src/game/engine';
-import { EASY } from '../../src/game/difficulty';
-import type { Card, Rank, Suit, GameState } from '../../src/types';
+import type { Card, Rank, Suit } from '../../src/types';
 
 /* ── Helpers ────────────────────────────────────────────────────── */
 

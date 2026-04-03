@@ -10,6 +10,7 @@
  */
 import type { CardLocation, GameState, ReadonlyPile } from '../types';
 import { CardRenderer } from './card-renderer';
+import { escapeCssValue } from '../utils/css';
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -26,6 +27,7 @@ export class BoardLayout {
   private container: HTMLElement | null = null;
   private boardEl: HTMLElement | null = null;
   private stockClickCallback: (() => void) | null = null;
+  private stockAbortController: AbortController | null = null;
 
   constructor(cardRenderer: CardRenderer) {
     this.cardRenderer = cardRenderer;
@@ -106,7 +108,7 @@ export class BoardLayout {
     if (!this.container) return null;
 
     return this.container.querySelector(
-      `[data-zone="${zone}"][data-pile-index="${String(index)}"]`,
+      `[data-zone="${escapeCssValue(zone)}"][data-pile-index="${escapeCssValue(String(index))}"]`,
     );
   }
 
@@ -203,10 +205,14 @@ export class BoardLayout {
     pileEl.appendChild(indicator);
   }
 
-  /** Update a single pile's contents in the DOM. */
+  /** Update a single pile's contents in the DOM. Short-circuits if card count is unchanged and top cards match. [DRY] */
   private updatePile(zone: string, index: number, pile: ReadonlyPile): void {
     const pileEl = this.getPileElement(zone, index);
     if (!pileEl) return;
+
+    // Check if the pile content is unchanged (skip DOM thrash)
+    const existingCards = pileEl.querySelectorAll('.card');
+    if (this.isPileUnchanged(existingCards, pile)) return;
 
     // Remove existing cards and empty indicators
     pileEl.innerHTML = '';
@@ -217,6 +223,24 @@ export class BoardLayout {
     // Add empty indicator if needed
     const symbol = this.getEmptySymbol(zone, index);
     this.addEmptyIndicator(pileEl, pile, symbol);
+  }
+
+  /** Quick equality check: same count and matching suit/rank/faceUp for every card. */
+  private isPileUnchanged(existingCards: NodeListOf<Element>, pile: ReadonlyPile): boolean {
+    if (existingCards.length !== pile.length) return false;
+
+    for (let i = 0; i < pile.length; i++) {
+      const el = existingCards[i] as HTMLElement;
+      const card = pile[i]!;
+      if (
+        el.dataset['suit'] !== card.suit ||
+        el.dataset['rank'] !== String(card.rank) ||
+        el.classList.contains('card--face-up') !== card.faceUp
+      ) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /** Get the empty-pile symbol for a given zone and index. */
@@ -230,11 +254,16 @@ export class BoardLayout {
   private attachStockClickHandler(): void {
     if (!this.stockClickCallback || !this.container) return;
 
+    // Abort any previous listener to prevent leaks [CLEAN-CODE]
+    this.stockAbortController?.abort();
+    this.stockAbortController = new AbortController();
+
     const stockEl = this.container.querySelector('[data-zone="stock"]');
     if (!stockEl) return;
 
-    // Clone and replace to remove old listeners
     const cb = this.stockClickCallback;
-    stockEl.addEventListener('click', () => cb());
+    stockEl.addEventListener('click', () => cb(), {
+      signal: this.stockAbortController.signal,
+    });
   }
 }

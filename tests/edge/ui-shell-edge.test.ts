@@ -131,7 +131,6 @@ describe('UIShell edge — Hint edge cases', () => {
     startGame(app);
 
     const hintBtn = app.querySelector('[data-action="hint"]') as HTMLButtonElement;
-    const stock = app.querySelector('[data-zone="stock"]') as HTMLElement;
 
     // Trigger hint
     hintBtn.click();

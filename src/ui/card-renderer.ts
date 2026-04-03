@@ -9,6 +9,7 @@
  */
 import type { Card, Rank, Suit } from '../types';
 import { suitColor } from '../game/card-utils';
+import { safeCssUrl } from '../utils/url';
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -110,7 +111,8 @@ export class CardRenderer {
     el.dataset['suit'] = card.suit;
     el.dataset['rank'] = String(card.rank);
 
-    // Card face (SVG)
+    // Card face (SVG) — nosemgrep: typescript.browser.security.innerHTML-audit
+    // The SVG template contains only static labels and CSS custom properties.
     const face = document.createElement('div');
     face.classList.add('card__face');
     face.innerHTML = buildCardFaceSvg(card.suit, card.rank);
@@ -120,8 +122,11 @@ export class CardRenderer {
     const backEl = document.createElement('div');
     backEl.classList.add('card__back');
     if (back) {
-      backEl.style.backgroundImage = `url(${back})`;
-      backEl.classList.add('card__back--photo');
+      const cssUrl = safeCssUrl(back);
+      if (cssUrl) {
+        backEl.style.backgroundImage = cssUrl;
+        backEl.classList.add('card__back--photo');
+      }
     }
     el.appendChild(backEl);
 
@@ -160,8 +165,11 @@ export class CardRenderer {
     if (!back) return;
 
     if (photoUrl) {
-      back.style.backgroundImage = `url(${photoUrl})`;
-      back.classList.add('card__back--photo');
+      const cssUrl = safeCssUrl(photoUrl);
+      if (cssUrl) {
+        back.style.backgroundImage = cssUrl;
+        back.classList.add('card__back--photo');
+      }
     } else {
       back.style.backgroundImage = '';
       back.classList.remove('card__back--photo');

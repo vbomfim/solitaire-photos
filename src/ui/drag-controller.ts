@@ -10,6 +10,7 @@
  */
 import type { CardLocation, GameState } from '../types';
 import { GameEngine } from '../game/engine';
+import { escapeCssValue } from '../utils/css';
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -170,7 +171,7 @@ export class DragController {
 
         if (!('valid' in result)) {
           // Successful move — apply state (which re-renders the board)
-          this.cleanupDragVisual();
+          this.endDrag();
           this.applyState(result);
           return;
         }
@@ -178,7 +179,7 @@ export class DragController {
     }
 
     // Invalid drop — snap back
-    this.snapBack();
+    this.endDrag();
   }
 
   /* ── Visual: start drag appearance ────────────────────────────── */
@@ -203,28 +204,11 @@ export class DragController {
     }
   }
 
-  /* ── Visual: clean up drag classes ────────────────────────────── */
+  /* ── Visual: clean up drag state ───────────────────────────────── */
 
-  private cleanupDragVisual(): void {
+  /** End drag and reset all visual state. [DRY] Used for both valid drops and snap-backs. */
+  private endDrag(): void {
     for (const card of this.draggedCards) {
-      card.classList.remove('card--dragging');
-      card.style.left = '';
-      card.style.top = '';
-      card.style.width = '';
-      card.style.height = '';
-      card.style.position = '';
-    }
-    this.clearDropHighlight();
-    this.draggedCards = [];
-    this.originalPositions = [];
-    this.dragFrom = null;
-  }
-
-  /* ── Visual: snap back to original position ───────────────────── */
-
-  private snapBack(): void {
-    for (let i = 0; i < this.draggedCards.length; i++) {
-      const card = this.draggedCards[i]!;
       card.classList.remove('card--dragging');
       card.style.left = '';
       card.style.top = '';
@@ -242,7 +226,7 @@ export class DragController {
 
   private cancelDrag(): void {
     if (this.isDragging) {
-      this.snapBack();
+      this.endDrag();
     }
     this.isDragging = false;
   }
@@ -317,7 +301,7 @@ export class DragController {
     const to: CardLocation = { zone: target.zone, pileIndex: target.pileIndex, cardIndex: 0 };
     if (this.engine.canMove(state, this.dragFrom, to)) {
       const pileEl = this.boardContainer.querySelector(
-        `[data-zone="${target.zone}"][data-pile-index="${String(target.pileIndex)}"]`,
+        `[data-zone="${escapeCssValue(target.zone)}"][data-pile-index="${escapeCssValue(String(target.pileIndex))}"]`,
       );
       if (pileEl) {
         pileEl.classList.add('pile--drop-target');

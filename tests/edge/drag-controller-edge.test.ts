@@ -62,7 +62,12 @@ describe('DragController edge — Non-primary button', () => {
 
   it('[EDGE] should ignore right-click (button=2) on face-up card', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     const col = container.querySelector('[data-zone="tableau"][data-pile-index="0"]');
     const faceUpCard = col?.querySelector('.card--face-up') as HTMLElement;
@@ -79,7 +84,12 @@ describe('DragController edge — Non-primary button', () => {
 
   it('[EDGE] should ignore middle-click (button=1) on face-up card', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     const col = container.querySelector('[data-zone="tableau"][data-pile-index="0"]');
     const faceUpCard = col?.querySelector('.card--face-up') as HTMLElement;
@@ -105,7 +115,12 @@ describe('DragController edge — Threshold boundary', () => {
 
   it('[BOUNDARY] should NOT start drag at exactly 4px displacement', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     const col = container.querySelector('[data-zone="tableau"][data-pile-index="0"]');
     const faceUpCard = col?.querySelector('.card--face-up') as HTMLElement;
@@ -121,7 +136,12 @@ describe('DragController edge — Threshold boundary', () => {
 
   it('[BOUNDARY] should start drag at exactly 5px displacement', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     const col = container.querySelector('[data-zone="tableau"][data-pile-index="0"]');
     const faceUpCard = col?.querySelector('.card--face-up') as HTMLElement;
@@ -137,7 +157,12 @@ describe('DragController edge — Threshold boundary', () => {
 
   it('[BOUNDARY] should start drag at 5px in negative direction', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     const col = container.querySelector('[data-zone="tableau"][data-pile-index="0"]');
     const faceUpCard = col?.querySelector('.card--face-up') as HTMLElement;
@@ -153,7 +178,12 @@ describe('DragController edge — Threshold boundary', () => {
 
   it('[BOUNDARY] should start drag at 5px in Y-only direction', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     const col = container.querySelector('[data-zone="tableau"][data-pile-index="0"]');
     const faceUpCard = col?.querySelector('.card--face-up') as HTMLElement;
@@ -184,7 +214,12 @@ describe('DragController edge — Multi-card collection in tableau', () => {
     const newState = engine.draw(state);
     layout.update(newState);
 
-    const controller = new DragController(container, engine, () => newState, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => newState,
+      () => {},
+    );
 
     const wasteCard = container.querySelector('[data-zone="waste"] .card--face-up') as HTMLElement;
     expect(wasteCard).not.toBeNull();
@@ -202,7 +237,12 @@ describe('DragController edge — Multi-card collection in tableau', () => {
 
   it('[EDGE] should pick up single top card from column with one face-up card', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     // Column 0 has exactly 1 card (face-up)
     const col = container.querySelector('[data-zone="tableau"][data-pile-index="0"]');
@@ -230,7 +270,12 @@ describe('DragController edge — Selection cleared on drag', () => {
 
   it('[EDGE] should remove card--selected from all cards when drag begins', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     // Manually select a card (simulating click-to-move selection)
     const cards = container.querySelectorAll('[data-zone="tableau"] .card--face-up');
@@ -263,7 +308,12 @@ describe('DragController edge — Destroy during drag', () => {
 
   it('[EDGE] should clean up dragging classes when destroyed mid-drag', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     const col = container.querySelector('[data-zone="tableau"][data-pile-index="0"]');
     const faceUpCard = col?.querySelector('.card--face-up') as HTMLElement;
@@ -282,7 +332,12 @@ describe('DragController edge — Destroy during drag', () => {
 
   it('[EDGE] should not throw when destroy is called multiple times', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     expect(() => {
       controller.destroy();
@@ -322,7 +377,12 @@ describe('DragController edge — Rapid pointer sequences', () => {
 
   it('[EDGE] should handle two consecutive drag attempts cleanly', () => {
     const { container, engine, state } = createBoardWithGame();
-    const controller = new DragController(container, engine, () => state, () => {});
+    const controller = new DragController(
+      container,
+      engine,
+      () => state,
+      () => {},
+    );
 
     const col = container.querySelector('[data-zone="tableau"][data-pile-index="0"]');
     const faceUpCard = col?.querySelector('.card--face-up') as HTMLElement;
