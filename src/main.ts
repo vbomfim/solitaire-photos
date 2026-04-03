@@ -4,7 +4,7 @@
  * Bootstraps the application: initializes the UI shell, game engine,
  * and wires up services. Renders into the #app container.
  */
-import './style.css';
+import './styles/global.css';
 
 const app = document.querySelector<HTMLDivElement>('#app');
 if (app) {

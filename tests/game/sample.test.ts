@@ -5,7 +5,7 @@
  * these tests define the expectations, then the code satisfies them.
  */
 import { describe, it, expect } from 'vitest';
-import type { Card, Suit, Rank, GameState, DifficultyConfig, Difficulty } from '../../types';
+import type { Card, Suit, Rank, GameState, DifficultyConfig, Difficulty } from '../../src/types';
 
 describe('Type system smoke tests', () => {
   describe('Card', () => {

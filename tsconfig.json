@@ -27,5 +27,11 @@
     "sourceMap": true,
     "declaration": true
   },
-  "include": ["src/**/*.ts", "vite.config.ts", "eslint.config.js", "vitest.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "vite.config.ts",
+    "eslint.config.js",
+    "vitest.config.ts"
+  ]
 }

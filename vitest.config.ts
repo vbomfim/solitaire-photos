@@ -4,12 +4,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/__tests__/**/*.test.ts', 'src/**/*.test.ts'],
+    include: ['tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       include: ['src/**/*.ts'],
-      exclude: ['src/**/__tests__/**', 'src/**/*.test.ts', 'src/main.ts', 'src/vite-env.d.ts'],
+      exclude: ['src/main.ts', 'src/vite-env.d.ts'],
     },
   },
 });
