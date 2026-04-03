@@ -1,0 +1,14 @@
+/**
+ * Minimal CSS reset.
+ *
+ * Normalises box-sizing, margins, and padding so every element
+ * starts from the same baseline across browsers.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}

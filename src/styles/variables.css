@@ -1,0 +1,34 @@
+/**
+ * CSS Custom Properties (Design Tokens) for Solitaire Photos.
+ *
+ * Centralises all theming values: colors, card dimensions, layout spacing,
+ * and typography. Component-specific CSS Modules reference these tokens
+ * so the visual language stays consistent across the app.
+ */
+
+:root {
+  /* ── Colors ───────────────────────────────────────── */
+  --color-bg: #0d5016;
+  --color-bg-felt: #1a7a2e;
+  --color-text: #f0f0f0;
+  --color-accent: #ffd700;
+  --color-card-back: #1a3a6b;
+  --color-card-face: #ffffff;
+  --color-red-suit: #d32f2f;
+  --color-black-suit: #212121;
+
+  /* ── Card Dimensions ──────────────────────────────── */
+  --card-width: 100px;
+  --card-height: 145px;
+  --card-radius: 8px;
+  --card-gap: 16px;
+  --card-overlap: 28px;
+
+  /* ── Layout ───────────────────────────────────────── */
+  --board-padding: 24px;
+  --header-height: 56px;
+
+  /* ── Typography ───────────────────────────────────── */
+  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', monospace;
+}

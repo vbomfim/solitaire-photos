@@ -1,0 +1,64 @@
+/**
+ * Global styles for Solitaire Photos.
+ *
+ * Imports design tokens (variables) and the CSS reset first,
+ * then applies base layout and component-agnostic styles.
+ * Component-specific styles live in *.module.css files.
+ */
+
+@import './variables.css';
+@import './reset.css';
+
+/* ── Base ─────────────────────────────────────────── */
+html,
+body {
+  height: 100%;
+  font-family: var(--font-family);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ───────────────────────────────────────── */
+header {
+  height: var(--header-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--board-padding);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+header h1 {
+  font-size: 1.5rem;
+  color: var(--color-accent);
+}
+
+header p {
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+/* ── Board ────────────────────────────────────────── */
+#board {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--board-padding);
+  background: radial-gradient(ellipse at center, var(--color-bg-felt) 0%, var(--color-bg) 100%);
+}
+
+.placeholder {
+  font-size: 1.25rem;
+  opacity: 0.6;
+  font-style: italic;
+}
