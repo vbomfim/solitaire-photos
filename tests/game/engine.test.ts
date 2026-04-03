@@ -1542,3 +1542,272 @@ describe('GameEngine — Edge Cases', () => {
     expect(e).toBeInstanceOf(GameEngine);
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════ */
+/* 10. SCORE MULTIPLIER [#1]                                        */
+/* ══════════════════════════════════════════════════════════════════ */
+
+describe('GameEngine — Score Multiplier', () => {
+  let engine: GameEngine;
+
+  beforeEach(() => {
+    engine = new GameEngine();
+  });
+
+  /* ── Waste → Tableau ───────────────────────────────────────── */
+
+  it('should score waste→tableau at 5 × 1 = 5 on EASY', () => {
+    const state = customState({
+      difficulty: EASY,
+      waste: [card('hearts', 3)],
+      tableau: [[card('spades', 4)]],
+      score: 0,
+    });
+    const result = engine.move(state, {
+      type: 'move',
+      from: { zone: 'waste', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'tableau', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(result.score).toBe(5);
+  });
+
+  it('should score waste→tableau at 5 × 2 = 10 on MEDIUM', () => {
+    const state = customState({
+      difficulty: MEDIUM,
+      waste: [card('hearts', 3)],
+      tableau: [[card('spades', 4)]],
+      score: 0,
+    });
+    const result = engine.move(state, {
+      type: 'move',
+      from: { zone: 'waste', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'tableau', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(result.score).toBe(10);
+  });
+
+  it('should score waste→tableau at 5 × 3 = 15 on HARD', () => {
+    const state = customState({
+      difficulty: HARD,
+      waste: [card('hearts', 3)],
+      tableau: [[card('spades', 4)]],
+      score: 0,
+    });
+    const result = engine.move(state, {
+      type: 'move',
+      from: { zone: 'waste', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'tableau', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(result.score).toBe(15);
+  });
+
+  /* ── Waste → Foundation ────────────────────────────────────── */
+
+  it('should score waste→foundation at 10 × 1 = 10 on EASY', () => {
+    const state = customState({
+      difficulty: EASY,
+      waste: [card('hearts', 1)],
+      foundation: [[], [], [], []],
+      score: 0,
+    });
+    const result = engine.move(state, {
+      type: 'move',
+      from: { zone: 'waste', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'foundation', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(result.score).toBe(10);
+  });
+
+  it('should score waste→foundation at 10 × 3 = 30 on HARD', () => {
+    const state = customState({
+      difficulty: HARD,
+      waste: [card('hearts', 1)],
+      foundation: [[], [], [], []],
+      score: 0,
+    });
+    const result = engine.move(state, {
+      type: 'move',
+      from: { zone: 'waste', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'foundation', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(result.score).toBe(30);
+  });
+
+  /* ── Tableau → Foundation ──────────────────────────────────── */
+
+  it('should score tableau→foundation at 10 × 1 = 10 on EASY', () => {
+    const state = customState({
+      difficulty: EASY,
+      tableau: [[card('hearts', 1)]],
+      foundation: [[], [], [], []],
+      score: 0,
+    });
+    const result = engine.move(state, {
+      type: 'move',
+      from: { zone: 'tableau', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'foundation', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(result.score).toBe(10);
+  });
+
+  it('should score tableau→foundation at 10 × 3 = 30 on HARD', () => {
+    const state = customState({
+      difficulty: HARD,
+      tableau: [[card('hearts', 1)]],
+      foundation: [[], [], [], []],
+      score: 0,
+    });
+    const result = engine.move(state, {
+      type: 'move',
+      from: { zone: 'tableau', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'foundation', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(result.score).toBe(30);
+  });
+
+  /* ── Flip card (tableau → tableau w/ face-down reveal) ───── */
+
+  it('should score flip at 5 × 1 = 5 on EASY', () => {
+    const state = customState({
+      difficulty: EASY,
+      tableau: [[card('clubs', 5, false), card('hearts', 3)], [card('spades', 4)]],
+      score: 0,
+    });
+    const result = engine.move(state, {
+      type: 'move',
+      from: { zone: 'tableau', pileIndex: 0, cardIndex: 1 },
+      to: { zone: 'tableau', pileIndex: 1, cardIndex: 1 },
+    }) as GameState;
+    // +5 for flipping the face-down card underneath
+    expect(result.score).toBe(5);
+  });
+
+  it('should score flip at 5 × 3 = 15 on HARD', () => {
+    const state = customState({
+      difficulty: HARD,
+      tableau: [[card('clubs', 5, false), card('hearts', 3)], [card('spades', 4)]],
+      score: 0,
+    });
+    const result = engine.move(state, {
+      type: 'move',
+      from: { zone: 'tableau', pileIndex: 0, cardIndex: 1 },
+      to: { zone: 'tableau', pileIndex: 1, cardIndex: 1 },
+    }) as GameState;
+    // +15 for flipping the face-down card underneath (5 × 3)
+    expect(result.score).toBe(15);
+  });
+
+  /* ── Undo reverses multiplied scores ───────────────────────── */
+
+  it('should undo waste→tableau and reverse multiplied score on HARD', () => {
+    const state = customState({
+      difficulty: HARD,
+      waste: [card('hearts', 3)],
+      tableau: [[card('spades', 4)]],
+      score: 0,
+    });
+    const afterMove = engine.move(state, {
+      type: 'move',
+      from: { zone: 'waste', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'tableau', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(afterMove.score).toBe(15); // 5 × 3
+    const undone = engine.move(afterMove, { type: 'undo' }) as GameState;
+    expect(undone.score).toBe(0); // reversed
+  });
+
+  it('should undo waste→foundation and reverse multiplied score on HARD', () => {
+    const state = customState({
+      difficulty: HARD,
+      waste: [card('hearts', 1)],
+      foundation: [[], [], [], []],
+      score: 0,
+    });
+    const afterMove = engine.move(state, {
+      type: 'move',
+      from: { zone: 'waste', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'foundation', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(afterMove.score).toBe(30); // 10 × 3
+    const undone = engine.move(afterMove, { type: 'undo' }) as GameState;
+    expect(undone.score).toBe(0);
+  });
+
+  it('should undo tableau→foundation and reverse multiplied score on HARD', () => {
+    const state = customState({
+      difficulty: HARD,
+      tableau: [[card('hearts', 1)]],
+      foundation: [[], [], [], []],
+      score: 0,
+    });
+    const afterMove = engine.move(state, {
+      type: 'move',
+      from: { zone: 'tableau', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'foundation', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(afterMove.score).toBe(30); // 10 × 3
+    const undone = engine.move(afterMove, { type: 'undo' }) as GameState;
+    expect(undone.score).toBe(0);
+  });
+
+  it('should undo flip and reverse multiplied score on HARD', () => {
+    const state = customState({
+      difficulty: HARD,
+      tableau: [[card('clubs', 5, false), card('hearts', 3)], [card('spades', 4)]],
+      score: 0,
+    });
+    const afterMove = engine.move(state, {
+      type: 'move',
+      from: { zone: 'tableau', pileIndex: 0, cardIndex: 1 },
+      to: { zone: 'tableau', pileIndex: 1, cardIndex: 1 },
+    }) as GameState;
+    expect(afterMove.score).toBe(15); // 5 × 3
+    const undone = engine.move(afterMove, { type: 'undo' }) as GameState;
+    expect(undone.score).toBe(0);
+  });
+
+  /* ── Cumulative multiplied scoring ─────────────────────────── */
+
+  it('should accumulate multiplied scores over multiple moves on HARD', () => {
+    const state = customState({
+      difficulty: HARD,
+      waste: [card('hearts', 3), card('hearts', 1)],
+      tableau: [[card('spades', 4)]],
+      foundation: [[], [], [], []],
+      score: 0,
+    });
+
+    // Move 1: waste→foundation (Ace is top = last element, cardIndex=1)
+    const after1 = engine.move(state, {
+      type: 'move',
+      from: { zone: 'waste', pileIndex: 0, cardIndex: 1 },
+      to: { zone: 'foundation', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(after1.score).toBe(30); // 10 × 3
+
+    // Move 2: waste→tableau (3 is now top = cardIndex=0)
+    const after2 = engine.move(after1, {
+      type: 'move',
+      from: { zone: 'waste', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'tableau', pileIndex: 0, cardIndex: 1 },
+    }) as GameState;
+    expect(after2.score).toBe(45); // 30 + 15
+  });
+
+  /* ── No difficulty defaults to multiplier 1 ────────────────── */
+
+  it('should default to multiplier 1 when difficulty is undefined', () => {
+    const state = customState({
+      difficulty: undefined,
+      waste: [card('hearts', 3)],
+      tableau: [[card('spades', 4)]],
+      score: 0,
+    });
+    const result = engine.move(state, {
+      type: 'move',
+      from: { zone: 'waste', pileIndex: 0, cardIndex: 0 },
+      to: { zone: 'tableau', pileIndex: 0, cardIndex: 0 },
+    }) as GameState;
+    expect(result.score).toBe(5); // 5 × 1 (default)
+  });
+});

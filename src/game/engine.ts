@@ -25,18 +25,18 @@ import { EASY } from './difficulty';
 const TABLEAU_COLUMNS = 7;
 const FOUNDATION_PILES = 4;
 
-/* ── Scoring constants (standard Klondike) ──────────────────────── */
+/* ── Base scoring constants (multiplied by difficulty multiplier) ── */
 
-const SCORE_WASTE_TO_TABLEAU = 5;
-const SCORE_WASTE_TO_FOUNDATION = 10;
-const SCORE_TABLEAU_TO_FOUNDATION = 10;
-const SCORE_FLIP_TABLEAU_CARD = 5;
+const BASE_WASTE_TO_TABLEAU = 5;
+const BASE_WASTE_TO_FOUNDATION = 10;
+const BASE_TABLEAU_TO_FOUNDATION = 10;
+const BASE_FLIP_TABLEAU_CARD = 5;
 
 /* ── Internal helpers ───────────────────────────────────────────── */
 
-/** Deep-clone a Card (for immutability). */
+/** Shallow-clone a Card via spread. [#8] */
 function cloneCard(c: Card): Card {
-  return { suit: c.suit, rank: c.rank, faceUp: c.faceUp };
+  return { ...c };
 }
 
 /** Clone a pile of cards. */
@@ -47,6 +47,11 @@ function clonePile(pile: ReadonlyPile): Card[] {
 /** Get the effective difficulty config from state, defaulting to EASY. */
 function getConfig(state: GameState): DifficultyConfig {
   return state.difficulty ?? EASY;
+}
+
+/** Get the score multiplier from state, defaulting to 1. */
+function getMultiplier(state: GameState): number {
+  return getConfig(state).scoreMultiplier;
 }
 
 /** Get the stock passes used, defaulting to 0. */
@@ -292,7 +297,15 @@ export class GameEngine {
 
   /* ── autoComplete ─────────────────────────────────────────────── */
 
-  /** Move all remaining cards to foundation automatically. */
+  /**
+   * Move all remaining cards to foundation automatically.
+   *
+   * **Defensive:** handles any state — iteratively moves the top card of
+   * each tableau column and the top waste card to matching foundations
+   * until no more moves are possible. Unlike `canAutoComplete()`, this
+   * method does NOT require all face-down cards to be revealed; it will
+   * simply stop when it can't find a valid foundation placement. [#6]
+   */
   autoComplete(state: GameState): GameState {
     let current = { ...state };
     let moved = true;
@@ -305,8 +318,8 @@ export class GameEngine {
         const pile = current.tableau[col];
         if (!pile || pile.length === 0) continue;
 
-        const topC = pile[pile.length - 1]!;
-        const foundationIdx = this.findTargetFoundation(current, topC);
+        const columnTop = topCard(pile)!;
+        const foundationIdx = this.findTargetFoundation(current, columnTop);
         if (foundationIdx >= 0) {
           const result = this.executeMove(
             current,
@@ -326,7 +339,7 @@ export class GameEngine {
 
       // Try moving from waste to any foundation
       if (current.waste.length > 0) {
-        const wasteTop = current.waste[current.waste.length - 1]!;
+        const wasteTop = topCard(current.waste)!;
         const foundationIdx = this.findTargetFoundation(current, wasteTop);
         if (foundationIdx >= 0) {
           const result = this.executeMove(
@@ -353,7 +366,15 @@ export class GameEngine {
 
   /* ── canAutoComplete ──────────────────────────────────────────── */
 
-  /** True when all face-down cards are revealed and stock/waste are empty. */
+  /**
+   * Advisory check: returns `true` when all face-down cards are revealed
+   * and stock/waste are empty — i.e., the game is in a state where the
+   * user can safely press an "Auto-Complete" button.
+   *
+   * This is intentionally stricter than what `autoComplete()` requires.
+   * Use this for **UI button state** (enable/disable), not as a gate
+   * before calling `autoComplete()` (which handles any state). [#6]
+   */
   canAutoComplete(state: GameState): boolean {
     if (state.stock.length > 0) return false;
     if (state.waste.length > 0) return false;
@@ -385,8 +406,8 @@ export class GameEngine {
     // If waste can be recycled, not lost
     if (canRecycle(state)) return false;
 
-    // If any valid card moves exist, not lost
-    return this.getValidMoves(state).length === 0;
+    // Short-circuit: find any single valid move [#3]
+    return !this.hasAnyValidMove(state);
   }
 
   /* ── getHint ──────────────────────────────────────────────────── */
@@ -403,88 +424,9 @@ export class GameEngine {
 
   /* ── getValidMoves ────────────────────────────────────────────── */
 
-  /** List all valid card moves from the current state. */
+  /** List all valid card moves from the current state. [#2] */
   getValidMoves(state: GameState): Move[] {
-    const moves: Move[] = [];
-
-    // Tableau-to-foundation and tableau-to-tableau
-    for (let col = 0; col < TABLEAU_COLUMNS; col++) {
-      const pile = state.tableau[col];
-      if (!pile || pile.length === 0) continue;
-
-      // Find first face-up card in column
-      const firstFaceUp = pile.findIndex((c) => c.faceUp);
-      if (firstFaceUp < 0) continue;
-
-      // Try each face-up sub-stack
-      for (let ci = firstFaceUp; ci < pile.length; ci++) {
-        const movingCards = pile.slice(ci);
-        const from: CardLocation = { zone: 'tableau', pileIndex: col, cardIndex: ci };
-
-        // Single card → try foundation
-        if (ci === pile.length - 1) {
-          for (let fi = 0; fi < FOUNDATION_PILES; fi++) {
-            const to: CardLocation = {
-              zone: 'foundation',
-              pileIndex: fi,
-              cardIndex: state.foundation[fi]!.length,
-            };
-            if (this.canMove(state, from, to)) {
-              moves.push({ from, to, cards: movingCards });
-            }
-          }
-        }
-
-        // Any sub-stack → try tableau
-        for (let destCol = 0; destCol < TABLEAU_COLUMNS; destCol++) {
-          if (destCol === col) continue;
-          const to: CardLocation = {
-            zone: 'tableau',
-            pileIndex: destCol,
-            cardIndex: state.tableau[destCol]!.length,
-          };
-          if (this.canMove(state, from, to)) {
-            moves.push({ from, to, cards: movingCards });
-          }
-        }
-      }
-    }
-
-    // Waste-to-foundation and waste-to-tableau
-    if (state.waste.length > 0) {
-      const wasteFrom: CardLocation = {
-        zone: 'waste',
-        pileIndex: 0,
-        cardIndex: state.waste.length - 1,
-      };
-      const wasteCard = state.waste[state.waste.length - 1]!;
-
-      // Foundation
-      for (let fi = 0; fi < FOUNDATION_PILES; fi++) {
-        const to: CardLocation = {
-          zone: 'foundation',
-          pileIndex: fi,
-          cardIndex: state.foundation[fi]!.length,
-        };
-        if (this.canMove(state, wasteFrom, to)) {
-          moves.push({ from: wasteFrom, to, cards: [wasteCard] });
-        }
-      }
-
-      // Tableau
-      for (let col = 0; col < TABLEAU_COLUMNS; col++) {
-        const to: CardLocation = {
-          zone: 'tableau',
-          pileIndex: col,
-          cardIndex: state.tableau[col]!.length,
-        };
-        if (this.canMove(state, wasteFrom, to)) {
-          moves.push({ from: wasteFrom, to, cards: [wasteCard] });
-        }
-      }
-    }
-
-    return moves;
+    return [...this.getTableauMoves(state), ...this.getWasteMoves(state)];
   }
 
   /* ── Private helpers ──────────────────────────────────────────── */
@@ -495,29 +437,29 @@ export class GameEngine {
       case 'tableau': {
         const pile = state.tableau[from.pileIndex];
         if (!pile || from.cardIndex >= pile.length) return null;
-        const card = pile[from.cardIndex];
-        if (!card || !card.faceUp) return null;
+        const c = pile[from.cardIndex];
+        if (!c || !c.faceUp) return null;
         return pile.slice(from.cardIndex);
       }
       case 'waste': {
         if (from.cardIndex >= state.waste.length) return null;
-        const card = state.waste[from.cardIndex];
-        if (!card) return null;
-        return [card];
+        const c = state.waste[from.cardIndex];
+        if (!c) return null;
+        return [c];
       }
       case 'foundation': {
         const pile = state.foundation[from.pileIndex];
         if (!pile || from.cardIndex >= pile.length) return null;
-        const card = pile[from.cardIndex];
-        if (!card) return null;
-        return [card];
+        const c = pile[from.cardIndex];
+        if (!c) return null;
+        return [c];
       }
       default:
         return null;
     }
   }
 
-  /** Execute a card move between locations. */
+  /** Execute a card move between locations. [#1][#4] */
   private executeMove(
     state: GameState,
     from: CardLocation,
@@ -528,59 +470,30 @@ export class GameEngine {
     }
 
     const movingCards = this.getCardsToMove(state, from)!;
-    let score = state.score;
-    let flippedCard = false;
+    const multiplier = getMultiplier(state);
 
-    // Clone tableau
+    // Clone all zones
     const newTableau = state.tableau.map(clonePile);
     const newFoundation = state.foundation.map(clonePile);
     let newWaste = clonePile(state.waste);
 
-    // Remove cards from source
-    switch (from.zone) {
-      case 'tableau': {
-        const srcPile = newTableau[from.pileIndex]!;
-        srcPile.splice(from.cardIndex);
-        // Flip newly exposed card
-        if (srcPile.length > 0) {
-          const newTop = srcPile[srcPile.length - 1]!;
-          if (!newTop.faceUp) {
-            newTop.faceUp = true;
-            flippedCard = true;
-            score += SCORE_FLIP_TABLEAU_CARD;
-          }
-        }
-        break;
-      }
-      case 'waste': {
-        // Remove top card from waste
-        newWaste = newWaste.slice(0, -1);
-        break;
-      }
-      case 'foundation': {
-        const srcPile = newFoundation[from.pileIndex]!;
-        srcPile.splice(from.cardIndex);
-        break;
-      }
+    // Remove cards from source [#4]
+    const { flippedCard, scoreChange: removeScore } = this.removeFromSource(
+      from,
+      newTableau,
+      newFoundation,
+      newWaste,
+    );
+    // Update waste ref if source was waste (slice creates new array)
+    if (from.zone === 'waste') {
+      newWaste = newWaste.slice(0, -1);
     }
 
-    // Add cards to destination
+    // Add cards to destination [#4]
     const clonedMovingCards = movingCards.map(cloneCard);
-    switch (to.zone) {
-      case 'tableau': {
-        const destPile = newTableau[to.pileIndex]!;
-        destPile.push(...clonedMovingCards);
-        if (from.zone === 'waste') score += SCORE_WASTE_TO_TABLEAU;
-        break;
-      }
-      case 'foundation': {
-        const destPile = newFoundation[to.pileIndex]!;
-        destPile.push(...clonedMovingCards);
-        if (from.zone === 'waste') score += SCORE_WASTE_TO_FOUNDATION;
-        else if (from.zone === 'tableau') score += SCORE_TABLEAU_TO_FOUNDATION;
-        break;
-      }
-    }
+    const addScore = this.addToDestination(to, from, clonedMovingCards, newTableau, newFoundation);
+
+    const score = state.score + (removeScore + addScore) * multiplier;
 
     const moveRecord: Move = {
       from,
@@ -593,7 +506,7 @@ export class GameEngine {
       ...state,
       tableau: newTableau,
       foundation: newFoundation,
-      waste: newWaste,
+      waste: from.zone === 'waste' ? newWaste : state.waste,
       moves: [...state.moves, moveRecord],
       score,
     };
@@ -604,6 +517,72 @@ export class GameEngine {
     }
 
     return newState;
+  }
+
+  /**
+   * Remove cards from the source zone. Mutates the cloned arrays in-place.
+   * Returns whether a card was flipped and the base score change. [#4]
+   */
+  private removeFromSource(
+    from: CardLocation,
+    newTableau: Card[][],
+    newFoundation: Card[][],
+    _newWaste: Card[],
+  ): { flippedCard: boolean; scoreChange: number } {
+    switch (from.zone) {
+      case 'tableau': {
+        const srcPile = newTableau[from.pileIndex]!;
+        srcPile.splice(from.cardIndex);
+        // Flip newly exposed card
+        if (srcPile.length > 0) {
+          const newTop = srcPile[srcPile.length - 1]!;
+          if (!newTop.faceUp) {
+            newTop.faceUp = true;
+            return { flippedCard: true, scoreChange: BASE_FLIP_TABLEAU_CARD };
+          }
+        }
+        return { flippedCard: false, scoreChange: 0 };
+      }
+      case 'waste':
+        // Waste removal is handled by the caller (slice)
+        return { flippedCard: false, scoreChange: 0 };
+      case 'foundation': {
+        const srcPile = newFoundation[from.pileIndex]!;
+        srcPile.splice(from.cardIndex);
+        return { flippedCard: false, scoreChange: 0 };
+      }
+      default:
+        return { flippedCard: false, scoreChange: 0 };
+    }
+  }
+
+  /**
+   * Add cards to the destination zone. Mutates the cloned arrays in-place.
+   * Returns the base score change (before multiplier). [#4]
+   */
+  private addToDestination(
+    to: CardLocation,
+    from: CardLocation,
+    cards: Card[],
+    newTableau: Card[][],
+    newFoundation: Card[][],
+  ): number {
+    switch (to.zone) {
+      case 'tableau': {
+        const destPile = newTableau[to.pileIndex]!;
+        destPile.push(...cards);
+        return from.zone === 'waste' ? BASE_WASTE_TO_TABLEAU : 0;
+      }
+      case 'foundation': {
+        const destPile = newFoundation[to.pileIndex]!;
+        destPile.push(...cards);
+        if (from.zone === 'waste') return BASE_WASTE_TO_FOUNDATION;
+        if (from.zone === 'tableau') return BASE_TABLEAU_TO_FOUNDATION;
+        return 0;
+      }
+      default:
+        return 0;
+    }
   }
 
   /** Undo a draw action. */
@@ -648,41 +627,77 @@ export class GameEngine {
     };
   }
 
-  /** Undo a card move between zones. */
+  /** Undo a card move between zones. [#1][#4] */
   private undoCardMove(state: GameState, lastMove: Move, newMoves: readonly Move[]): GameState {
     const newTableau = state.tableau.map(clonePile);
     const newFoundation = state.foundation.map(clonePile);
     const newWaste = clonePile(state.waste);
-    let score = state.score;
+    const multiplier = getMultiplier(state);
 
-    // Remove cards from destination
+    // Remove cards from destination (reverse of addToDestination)
+    const removeScore = this.undoRemoveFromDest(lastMove, newTableau, newFoundation);
+
+    // Un-flip the card that was flipped
+    let flipScore = 0;
+    if (lastMove.flippedCard && lastMove.from.zone === 'tableau') {
+      const srcPile = newTableau[lastMove.from.pileIndex]!;
+      if (srcPile.length > 0) {
+        srcPile[srcPile.length - 1]!.faceUp = false;
+        flipScore = BASE_FLIP_TABLEAU_CARD;
+      }
+    }
+
+    // Add cards back to source (reverse of removeFromSource)
+    this.undoAddBackToSource(lastMove, newTableau, newFoundation, newWaste);
+
+    const score = state.score - (removeScore + flipScore) * multiplier;
+
+    return {
+      ...state,
+      tableau: newTableau,
+      foundation: newFoundation,
+      waste: newWaste,
+      moves: newMoves,
+      score,
+      isWon: false,
+    };
+  }
+
+  /**
+   * Undo: remove cards that were placed at the destination.
+   * Returns the base score that was awarded for that placement. [#4]
+   */
+  private undoRemoveFromDest(
+    lastMove: Move,
+    newTableau: Card[][],
+    newFoundation: Card[][],
+  ): number {
     const cardCount = lastMove.cards.length;
     switch (lastMove.to.zone) {
       case 'tableau': {
         const destPile = newTableau[lastMove.to.pileIndex]!;
         destPile.splice(destPile.length - cardCount);
-        if (lastMove.from.zone === 'waste') score -= SCORE_WASTE_TO_TABLEAU;
-        break;
+        return lastMove.from.zone === 'waste' ? BASE_WASTE_TO_TABLEAU : 0;
       }
       case 'foundation': {
         const destPile = newFoundation[lastMove.to.pileIndex]!;
         destPile.splice(destPile.length - cardCount);
-        if (lastMove.from.zone === 'waste') score -= SCORE_WASTE_TO_FOUNDATION;
-        else if (lastMove.from.zone === 'tableau') score -= SCORE_TABLEAU_TO_FOUNDATION;
-        break;
+        if (lastMove.from.zone === 'waste') return BASE_WASTE_TO_FOUNDATION;
+        if (lastMove.from.zone === 'tableau') return BASE_TABLEAU_TO_FOUNDATION;
+        return 0;
       }
+      default:
+        return 0;
     }
+  }
 
-    // Un-flip the card that was flipped
-    if (lastMove.flippedCard && lastMove.from.zone === 'tableau') {
-      const srcPile = newTableau[lastMove.from.pileIndex]!;
-      if (srcPile.length > 0) {
-        srcPile[srcPile.length - 1]!.faceUp = false;
-        score -= SCORE_FLIP_TABLEAU_CARD;
-      }
-    }
-
-    // Add cards back to source
+  /** Undo: restore cards back to their original source zone. [#4] */
+  private undoAddBackToSource(
+    lastMove: Move,
+    newTableau: Card[][],
+    newFoundation: Card[][],
+    newWaste: Card[],
+  ): void {
     const restoredCards = lastMove.cards.map(cloneCard);
     switch (lastMove.from.zone) {
       case 'tableau': {
@@ -700,16 +715,6 @@ export class GameEngine {
         break;
       }
     }
-
-    return {
-      ...state,
-      tableau: newTableau,
-      foundation: newFoundation,
-      waste: newWaste,
-      moves: newMoves,
-      score,
-      isWon: false,
-    };
   }
 
   /** Find the correct foundation pile index for a card, or -1 if none. */
@@ -721,5 +726,164 @@ export class GameEngine {
       }
     }
     return -1;
+  }
+
+  /** Collect all valid moves originating from tableau columns. [#2] */
+  private getTableauMoves(state: GameState): Move[] {
+    const moves: Move[] = [];
+
+    for (let col = 0; col < TABLEAU_COLUMNS; col++) {
+      const pile = state.tableau[col];
+      if (!pile || pile.length === 0) continue;
+
+      // Find first face-up card in column
+      const firstFaceUp = pile.findIndex((c) => c.faceUp);
+      if (firstFaceUp < 0) continue;
+
+      // Try each face-up sub-stack
+      for (let ci = firstFaceUp; ci < pile.length; ci++) {
+        const movingCards = pile.slice(ci);
+        const from: CardLocation = { zone: 'tableau', pileIndex: col, cardIndex: ci };
+
+        // Single card → try foundation
+        if (ci === pile.length - 1) {
+          for (let fi = 0; fi < FOUNDATION_PILES; fi++) {
+            const to: CardLocation = {
+              zone: 'foundation',
+              pileIndex: fi,
+              cardIndex: state.foundation[fi]!.length,
+            };
+            if (this.canMove(state, from, to)) {
+              moves.push({ from, to, cards: movingCards });
+            }
+          }
+        }
+
+        // Any sub-stack → try other tableau columns
+        for (let destCol = 0; destCol < TABLEAU_COLUMNS; destCol++) {
+          if (destCol === col) continue;
+          const to: CardLocation = {
+            zone: 'tableau',
+            pileIndex: destCol,
+            cardIndex: state.tableau[destCol]!.length,
+          };
+          if (this.canMove(state, from, to)) {
+            moves.push({ from, to, cards: movingCards });
+          }
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  /** Collect all valid moves originating from the waste pile. [#2] */
+  private getWasteMoves(state: GameState): Move[] {
+    const moves: Move[] = [];
+    if (state.waste.length === 0) return moves;
+
+    const wasteFrom: CardLocation = {
+      zone: 'waste',
+      pileIndex: 0,
+      cardIndex: state.waste.length - 1,
+    };
+    const wasteCard = state.waste[state.waste.length - 1]!;
+
+    // Foundation
+    for (let fi = 0; fi < FOUNDATION_PILES; fi++) {
+      const to: CardLocation = {
+        zone: 'foundation',
+        pileIndex: fi,
+        cardIndex: state.foundation[fi]!.length,
+      };
+      if (this.canMove(state, wasteFrom, to)) {
+        moves.push({ from: wasteFrom, to, cards: [wasteCard] });
+      }
+    }
+
+    // Tableau
+    for (let col = 0; col < TABLEAU_COLUMNS; col++) {
+      const to: CardLocation = {
+        zone: 'tableau',
+        pileIndex: col,
+        cardIndex: state.tableau[col]!.length,
+      };
+      if (this.canMove(state, wasteFrom, to)) {
+        moves.push({ from: wasteFrom, to, cards: [wasteCard] });
+      }
+    }
+
+    return moves;
+  }
+
+  /**
+   * Short-circuit check: returns `true` as soon as any valid move is found.
+   * Used by `isLost()` to avoid building the full moves array. [#3]
+   */
+  private hasAnyValidMove(state: GameState): boolean {
+    // Check tableau moves
+    for (let col = 0; col < TABLEAU_COLUMNS; col++) {
+      const pile = state.tableau[col];
+      if (!pile || pile.length === 0) continue;
+
+      const firstFaceUp = pile.findIndex((c) => c.faceUp);
+      if (firstFaceUp < 0) continue;
+
+      for (let ci = firstFaceUp; ci < pile.length; ci++) {
+        const from: CardLocation = { zone: 'tableau', pileIndex: col, cardIndex: ci };
+
+        // Single card → try foundation
+        if (ci === pile.length - 1) {
+          for (let fi = 0; fi < FOUNDATION_PILES; fi++) {
+            const to: CardLocation = {
+              zone: 'foundation',
+              pileIndex: fi,
+              cardIndex: state.foundation[fi]!.length,
+            };
+            if (this.canMove(state, from, to)) return true;
+          }
+        }
+
+        // Any sub-stack → try other tableau columns
+        for (let destCol = 0; destCol < TABLEAU_COLUMNS; destCol++) {
+          if (destCol === col) continue;
+          const to: CardLocation = {
+            zone: 'tableau',
+            pileIndex: destCol,
+            cardIndex: state.tableau[destCol]!.length,
+          };
+          if (this.canMove(state, from, to)) return true;
+        }
+      }
+    }
+
+    // Check waste moves
+    if (state.waste.length > 0) {
+      const wasteFrom: CardLocation = {
+        zone: 'waste',
+        pileIndex: 0,
+        cardIndex: state.waste.length - 1,
+      };
+
+      for (let fi = 0; fi < FOUNDATION_PILES; fi++) {
+        const to: CardLocation = {
+          zone: 'foundation',
+          pileIndex: fi,
+          cardIndex: state.foundation[fi]!.length,
+        };
+        if (this.canMove(state, wasteFrom, to)) return true;
+      }
+
+      for (let col = 0; col < TABLEAU_COLUMNS; col++) {
+        const to: CardLocation = {
+          zone: 'tableau',
+          pileIndex: col,
+          cardIndex: state.tableau[col]!.length,
+        };
+        if (this.canMove(state, wasteFrom, to)) return true;
+      }
+    }
+
+    return false;
   }
 }
