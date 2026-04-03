@@ -25,8 +25,11 @@ export interface Card {
   photoUrl?: string | undefined;
 }
 
-/** A pile of cards — used for tableau columns, foundation, stock, and waste. */
+/** A mutable pile of cards — used by engine internals for in-place manipulation. */
 export type Pile = Card[];
+
+/** A read-only pile of cards — used in GameState and public interfaces. */
+export type ReadonlyPile = readonly Card[];
 
 /** Identifies where a card or group of cards is located. */
 export interface CardLocation {
@@ -48,17 +51,15 @@ export interface Move {
 /** Complete snapshot of the game at a point in time. */
 export interface GameState {
   /** Seven tableau columns (Klondike standard). */
-  readonly tableau: readonly Pile[];
+  readonly tableau: readonly ReadonlyPile[];
   /** Four foundation piles, one per suit. */
-  readonly foundation: readonly Pile[];
+  readonly foundation: readonly ReadonlyPile[];
   /** The draw pile (face-down). */
-  readonly stock: Pile;
+  readonly stock: ReadonlyPile;
   /** Cards drawn from the stock (face-up). */
-  readonly waste: Pile;
-  /** Ordered list of moves made so far (for undo). */
+  readonly waste: ReadonlyPile;
+  /** Ordered list of moves made so far (for undo). Move count = moves.length. */
   readonly moves: readonly Move[];
-  /** Number of moves made. */
-  readonly moveCount: number;
   /** Elapsed time in seconds. */
   readonly elapsedSeconds: number;
   /** Current score. */

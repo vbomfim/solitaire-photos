@@ -1,11 +1,10 @@
 import js from '@eslint/js';
-import tsPlugin from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
+import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
 import globals from 'globals';
 
-export default [
+export default tseslint.config(
   /* ── Global ignores ──────────────────────────────── */
   {
     ignores: ['dist/**', 'coverage/**', 'node_modules/**'],
@@ -14,14 +13,14 @@ export default [
   /* ── Base JS recommended ─────────────────────────── */
   js.configs.recommended,
 
-  /* ── TypeScript files ────────────────────────────── */
+  /* ── TypeScript type-checked (scoped to .ts files) ─ */
   {
     files: ['**/*.ts'],
+    extends: [...tseslint.configs.recommendedTypeChecked],
     languageOptions: {
-      parser: tsParser,
       parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
       globals: {
         ...globals.browser,
@@ -29,14 +28,11 @@ export default [
       },
     },
     plugins: {
-      '@typescript-eslint': tsPlugin,
       prettier: prettierPlugin,
     },
     rules: {
-      ...tsPlugin.configs.recommended.rules,
       ...prettierConfig.rules,
       'prettier/prettier': 'error',
-      'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
@@ -46,7 +42,7 @@ export default [
     },
   },
 
-  /* ── JS config files (eslint, vite, vitest) ──────── */
+  /* ── JS config files (eslint, vite) ──────────────── */
   {
     files: ['**/*.js', '**/*.cjs', '**/*.mjs'],
     languageOptions: {
@@ -62,4 +58,4 @@ export default [
       'prettier/prettier': 'error',
     },
   },
-];
+);

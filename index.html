@@ -5,9 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Solitaire Photos</title>
     <meta name="description" content="Klondike solitaire with Google Photos card backs" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://accounts.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://photoslibrary.googleapis.com https://photospicker.googleapis.com; img-src 'self' https://*.googleusercontent.com blob: data:;"
+    />
 
-    <!-- Google Identity Services (async, deferred) -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Google Identity Services loaded dynamically in Story 5 -->
   </head>
   <body>
     <div id="app"></div>

@@ -65,7 +65,6 @@ describe('Type system smoke tests', () => {
         stock: [],
         waste: [],
         moves: [],
-        moveCount: 0,
         elapsedSeconds: 0,
         score: 0,
         isWon: false,
@@ -73,7 +72,7 @@ describe('Type system smoke tests', () => {
 
       expect(state.tableau).toHaveLength(7);
       expect(state.foundation).toHaveLength(4);
-      expect(state.moveCount).toBe(0);
+      expect(state.moves).toHaveLength(0);
       expect(state.isWon).toBe(false);
     });
   });

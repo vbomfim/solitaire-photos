@@ -24,14 +24,7 @@
 
     /* Output */
     "outDir": "dist",
-    "sourceMap": true,
-    "declaration": true
+    "sourceMap": true
   },
-  "include": [
-    "src/**/*.ts",
-    "tests/**/*.ts",
-    "vite.config.ts",
-    "eslint.config.js",
-    "vitest.config.ts"
-  ]
+  "include": ["src/**/*.ts", "tests/**/*.ts", "vite.config.ts", "eslint.config.js"]
 }
