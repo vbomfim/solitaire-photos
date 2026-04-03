@@ -8,6 +8,8 @@
  * [COVERAGE] — No existing tests verify that placeholder modules are importable.
  * [AC-1] — "Vite produces dist/ with zero TypeScript compilation errors" implies
  *           all modules must be valid and importable.
+ *
+ * @vitest-environment jsdom
  */
 import { describe, it, expect } from 'vitest';
 
@@ -74,11 +76,11 @@ describe('Module import chain [COVERAGE]', () => {
     expect(new PhotosService()).toBeInstanceOf(PhotosService);
     expect(new PhotoCache()).toBeInstanceOf(PhotoCache);
     expect(new ScoreKeeper()).toBeInstanceOf(ScoreKeeper);
-    expect(new BoardLayout()).toBeInstanceOf(BoardLayout);
+    expect(new BoardLayout(new CardRenderer())).toBeInstanceOf(BoardLayout);
     expect(new CardRenderer()).toBeInstanceOf(CardRenderer);
     expect(new DragController()).toBeInstanceOf(DragController);
     expect(new EndGameReveal()).toBeInstanceOf(EndGameReveal);
-    expect(new UIShell()).toBeInstanceOf(UIShell);
+    expect(new UIShell(document.createElement('div'))).toBeInstanceOf(UIShell);
   });
 });
 

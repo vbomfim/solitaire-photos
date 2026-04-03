@@ -1,0 +1,163 @@
+/**
+ * Card styles for Solitaire Photos.
+ *
+ * Card dimensions, face/back layout, flip animation (3D CSS transform),
+ * hover/drag shadows, highlight glow, and selected outline.
+ * Uses design tokens from variables.css.
+ */
+
+/* ── Card container ──────────────────────────────────────────────── */
+
+.card {
+  position: relative;
+  width: var(--card-width);
+  height: var(--card-height);
+  border-radius: var(--card-radius);
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+}
+
+/* ── Card face (front) ───────────────────────────────────────────── */
+
+.card__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: var(--card-radius);
+  background-color: var(--color-card-face);
+  border: 1px solid #ccc;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card__face .card__svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Card back ───────────────────────────────────────────────────── */
+
+.card__back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: var(--card-radius);
+  background-color: var(--color-card-back);
+  border: 2px solid #0f2b4d;
+  transform: rotateY(180deg);
+
+  /* Default decorative pattern (CSS gradient) */
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 5px,
+      rgba(255, 255, 255, 0.05) 5px,
+      rgba(255, 255, 255, 0.05) 10px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 5px,
+      rgba(255, 255, 255, 0.04) 5px,
+      rgba(255, 255, 255, 0.04) 10px
+    );
+  background-size: cover;
+  background-position: center;
+}
+
+/* When a photo is set as card back */
+.card__back--photo {
+  background-size: cover;
+  background-position: center;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── Face-up / Face-down states (3D flip) ────────────────────────── */
+
+.card--face-up {
+  transform: rotateY(0deg);
+}
+
+.card--face-down {
+  transform: rotateY(180deg);
+}
+
+/* ── Suit colors ─────────────────────────────────────────────────── */
+
+.card--red .card__face {
+  color: var(--color-red-suit);
+}
+
+.card--black .card__face {
+  color: var(--color-black-suit);
+}
+
+/* ── Interactive states ──────────────────────────────────────────── */
+
+.card--draggable {
+  cursor: grab;
+}
+
+.card--draggable:active {
+  cursor: grabbing;
+}
+
+.card--highlighted {
+  box-shadow: 0 0 12px 4px var(--color-accent);
+  z-index: 10;
+}
+
+.card--selected {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+  z-index: 10;
+}
+
+.card:hover {
+  z-index: 5;
+}
+
+/* ── Drag state ──────────────────────────────────────────────────── */
+
+.card--dragging {
+  opacity: 0.9;
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  will-change: transform;
+}
+
+/* ── Animation performance ───────────────────────────────────────── */
+
+.card {
+  will-change: transform;
+}
+
+/* ── Responsive card sizes ───────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  :root {
+    --card-width: 80px;
+    --card-height: 116px;
+    --card-radius: 6px;
+    --card-gap: 12px;
+    --card-overlap: 22px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --card-width: 60px;
+    --card-height: 87px;
+    --card-radius: 5px;
+    --card-gap: 8px;
+    --card-overlap: 18px;
+  }
+}
