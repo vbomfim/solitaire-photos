@@ -46,6 +46,53 @@ export interface Move {
   readonly to: CardLocation;
   readonly cards: readonly Card[];
   readonly flippedCard?: boolean | undefined;
+  /** Number of cards drawn (for draw undo). */
+  readonly drawCount?: number | undefined;
+  /** Previous stockPassesUsed (for recycle undo). */
+  readonly previousStockPasses?: number | undefined;
+}
+
+/* ── Action types — user intent for each game action ────────────── */
+
+/** Draw cards from stock to waste. */
+export interface DrawAction {
+  readonly type: 'draw';
+}
+
+/** Move one or more cards between zones. */
+export interface MoveCardAction {
+  readonly type: 'move';
+  readonly from: CardLocation;
+  readonly to: CardLocation;
+}
+
+/** Flip waste back to stock. */
+export interface RecycleStockAction {
+  readonly type: 'recycle';
+}
+
+/** Revert the last move. */
+export interface UndoAction {
+  readonly type: 'undo';
+}
+
+/** Auto-complete remaining cards to foundation. */
+export interface AutoCompleteAction {
+  readonly type: 'auto-complete';
+}
+
+/** Union of all possible game actions. */
+export type Action =
+  | DrawAction
+  | MoveCardAction
+  | RecycleStockAction
+  | UndoAction
+  | AutoCompleteAction;
+
+/** Returned when a move is invalid. */
+export interface InvalidMove {
+  readonly valid: false;
+  readonly reason: string;
 }
 
 /** Complete snapshot of the game at a point in time. */
@@ -66,6 +113,10 @@ export interface GameState {
   readonly score: number;
   /** Whether the game has been won. */
   readonly isWon: boolean;
+  /** Number of times stock has been recycled (optional for backward compat). */
+  readonly stockPassesUsed?: number | undefined;
+  /** Difficulty config for this game (optional for backward compat). */
+  readonly difficulty?: DifficultyConfig | undefined;
 }
 
 /** Difficulty levels supported by the game. */
