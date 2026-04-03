@@ -3,15 +3,17 @@
  *
  * Manages screens (menu → game → end), wires up the game engine,
  * board layout, and toolbar controls (undo, hint, new game, timer).
+ * Uses event delegation for card interactions (click-to-move + double-click).
  *
  * [SOLID] SRP — screen management and event wiring only.
  * [CLEAN-CODE] Small methods, clear screen transitions.
  */
-import type { Difficulty, DifficultyConfig, GameState } from '../types';
+import type { CardLocation, Difficulty, DifficultyConfig, GameState } from '../types';
 import { GameEngine } from '../game/engine';
 import { getDifficultyConfig } from '../game/difficulty';
 import { CardRenderer } from './card-renderer';
 import { BoardLayout } from './board-layout';
+import { DragController } from './drag-controller';
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -30,10 +32,14 @@ export class UIShell {
   private readonly cardRenderer: CardRenderer;
 
   private boardLayout: BoardLayout | null = null;
+  private dragController: DragController | null = null;
   private gameState: GameState | null = null;
   private selectedDifficulty: Difficulty = 'easy';
   private timerId: ReturnType<typeof setInterval> | null = null;
   private elapsedSeconds = 0;
+
+  /** Selected card location for click-to-move. */
+  private selectedLocation: CardLocation | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -51,6 +57,8 @@ export class UIShell {
   /** Render the menu screen. [CLEAN-CODE] */
   private showMenuScreen(): void {
     this.stopTimer();
+    this.dragController?.destroy();
+    this.dragController = null;
     this.container.innerHTML = '';
 
     const menu = document.createElement('div');
@@ -128,6 +136,7 @@ export class UIShell {
     const config: DifficultyConfig = getDifficultyConfig(this.selectedDifficulty);
     this.gameState = this.engine.newGame(config);
     this.elapsedSeconds = 0;
+    this.selectedLocation = null;
 
     this.container.innerHTML = '';
 
@@ -151,8 +160,16 @@ export class UIShell {
     gameScreen.appendChild(boardContainer);
     this.container.appendChild(gameScreen);
 
-    // Wire card clicks for moving
-    this.wireCardClicks(boardContainer);
+    // Wire event-delegated interactions on the board
+    this.wireEventDelegation(boardContainer);
+
+    // Initialize drag-and-drop controller
+    this.dragController = new DragController(
+      boardContainer,
+      this.engine,
+      () => this.gameState,
+      (newState: GameState) => this.applyState(newState),
+    );
 
     // Start timer
     this.startTimer();
@@ -217,6 +234,55 @@ export class UIShell {
     return toolbar;
   }
 
+  /* ── Event delegation ─────────────────────────────────────────── */
+
+  /**
+   * Wire event-delegated click and dblclick on the board container.
+   * Uses event delegation — a single listener walks up from the target
+   * to find the card/pile, so no per-card re-wiring is needed. [DRY]
+   */
+  private wireEventDelegation(boardContainer: HTMLElement): void {
+    boardContainer.addEventListener('click', (e) => this.onBoardClick(e));
+    boardContainer.addEventListener('dblclick', (e) => this.onBoardDblClick(e));
+  }
+
+  /** Delegated click handler on the board. */
+  private onBoardClick(e: Event): void {
+    const target = e.target as HTMLElement;
+
+    // Walk up to find the card element
+    const cardEl = target.closest<HTMLElement>('.card');
+    const pileEl = target.closest<HTMLElement>('[data-zone]');
+
+    if (!pileEl) return;
+
+    const zone = pileEl.getAttribute('data-zone');
+    if (!zone) return;
+
+    // If stock pile, ignore (handled by onStockClick)
+    if (zone === 'stock') return;
+
+    if (cardEl && cardEl.classList.contains('card--face-up')) {
+      this.handleCardClick(cardEl, pileEl);
+    } else if (!cardEl && this.selectedLocation) {
+      // Clicked on empty pile area — use as drop target
+      this.handlePileClick(pileEl);
+    } else if (cardEl && cardEl.classList.contains('card--face-up') === false) {
+      // Clicked on face-down card — deselect
+      this.clearSelection();
+    }
+  }
+
+  /** Delegated double-click handler — auto-move to foundation. */
+  private onBoardDblClick(e: Event): void {
+    const target = e.target as HTMLElement;
+    const cardEl = target.closest<HTMLElement>('.card');
+
+    if (!cardEl || !cardEl.classList.contains('card--face-up')) return;
+
+    this.tryAutoMoveToFoundation(cardEl);
+  }
+
   /* ── Game actions ─────────────────────────────────────────────── */
 
   /** Handle stock pile click — draw cards. */
@@ -234,9 +300,7 @@ export class UIShell {
       return; // Nothing to do
     }
 
-    this.boardLayout?.update(this.gameState);
-    this.updateDisplays();
-    this.wireCardClicks(this.container.querySelector('.game__board')!);
+    this.refreshBoard();
   }
 
   /** Handle undo button click. */
@@ -244,9 +308,7 @@ export class UIShell {
     if (!this.gameState || this.gameState.moves.length === 0) return;
 
     this.gameState = this.engine.undo(this.gameState);
-    this.boardLayout?.update(this.gameState);
-    this.updateDisplays();
-    this.wireCardClicks(this.container.querySelector('.game__board')!);
+    this.refreshBoard();
   }
 
   /** Handle hint button click. */
@@ -272,7 +334,7 @@ export class UIShell {
     }
   }
 
-  /** Clear all card highlights. */
+  /** Clear all card highlights and selection. */
   private clearHighlights(): void {
     const highlighted = this.container.querySelectorAll('.card--highlighted');
     for (const el of highlighted) {
@@ -282,85 +344,123 @@ export class UIShell {
     for (const el of hintTargets) {
       el.classList.remove('pile--hint-target');
     }
+    this.clearSelection();
+  }
+
+  /** Clear selected card state. */
+  private clearSelection(): void {
     const selected = this.container.querySelectorAll('.card--selected');
     for (const el of selected) {
       this.cardRenderer.selectCard(el as HTMLElement, false);
     }
+    this.selectedLocation = null;
   }
 
-  /* ── Card click handling (click-to-move) ──────────────────────── */
-
-  /** Selected card location for click-to-move. */
-  private selectedLocation: { zone: string; pileIndex: number; cardIndex: number } | null = null;
-
-  /** Wire click handlers on all face-up cards for click-to-move. */
-  private wireCardClicks(boardContainer: HTMLElement): void {
-    const allCards = boardContainer.querySelectorAll('.card');
-    for (const cardEl of allCards) {
-      const htmlCard = cardEl as HTMLElement;
-      // Remove old listener by cloning (simple approach for re-wiring)
-      const clone = htmlCard.cloneNode(true) as HTMLElement;
-      htmlCard.parentNode?.replaceChild(clone, htmlCard);
-
-      if (clone.classList.contains('card--face-up')) {
-        clone.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.handleCardClick(clone);
-        });
-      }
-    }
-  }
+  /* ── Click-to-move ────────────────────────────────────────────── */
 
   /** Handle a click on a face-up card. */
-  private handleCardClick(cardEl: HTMLElement): void {
+  private handleCardClick(cardEl: HTMLElement, pileEl: HTMLElement): void {
     if (!this.gameState || !this.boardLayout) return;
 
-    const zone = cardEl.closest('[data-zone]')?.getAttribute('data-zone');
-    const pileIndex = Number(cardEl.closest('[data-zone]')?.getAttribute('data-pile-index') ?? 0);
-    const cardIndex = Number(cardEl.dataset['cardIndex'] ?? 0);
-
-    if (!zone) return;
+    const location = this.resolveCardLocation(cardEl, pileEl);
+    if (!location) return;
 
     if (this.selectedLocation) {
-      // Second click — try to move
-      this.clearHighlights();
-
-      const from = {
-        zone: this.selectedLocation.zone as 'tableau' | 'foundation' | 'stock' | 'waste',
-        pileIndex: this.selectedLocation.pileIndex,
-        cardIndex: this.selectedLocation.cardIndex,
-      };
-      const to = {
-        zone: zone as 'tableau' | 'foundation' | 'stock' | 'waste',
-        pileIndex,
+      // Second click — try to move to the pile this card is in
+      const from = this.selectedLocation;
+      const to: CardLocation = {
+        zone: location.zone,
+        pileIndex: location.pileIndex,
         cardIndex: 0,
       };
 
-      const result = this.engine.move(this.gameState, {
-        type: 'move',
-        from,
-        to,
-      });
-
-      if (!('valid' in result)) {
-        this.gameState = result;
-        this.boardLayout.update(this.gameState);
-        this.updateDisplays();
-        this.wireCardClicks(this.container.querySelector('.game__board')!);
-
-        // Check win
-        if (this.engine.isWon(this.gameState)) {
-          this.handleWin();
-        }
-      }
-
-      this.selectedLocation = null;
+      this.clearSelection();
+      this.tryMove(from, to);
     } else {
       // First click — select card
-      this.clearHighlights();
+      this.clearSelection();
       this.cardRenderer.selectCard(cardEl, true);
-      this.selectedLocation = { zone, pileIndex, cardIndex };
+      this.selectedLocation = location;
     }
+  }
+
+  /** Handle a click on an empty pile area (as move target). */
+  private handlePileClick(pileEl: HTMLElement): void {
+    if (!this.selectedLocation || !this.gameState) return;
+
+    const zone = pileEl.getAttribute('data-zone') as CardLocation['zone'];
+    const pileIndex = Number(pileEl.getAttribute('data-pile-index') ?? 0);
+
+    const from = this.selectedLocation;
+    const to: CardLocation = { zone, pileIndex, cardIndex: 0 };
+
+    this.clearSelection();
+    this.tryMove(from, to);
+  }
+
+  /** Try auto-moving a card to any valid foundation pile. */
+  private tryAutoMoveToFoundation(cardEl: HTMLElement): void {
+    if (!this.gameState || !this.boardLayout) return;
+
+    const pileEl = cardEl.closest<HTMLElement>('[data-zone]');
+    if (!pileEl) return;
+
+    const from = this.resolveCardLocation(cardEl, pileEl);
+    if (!from) return;
+
+    // Try each foundation pile
+    for (let i = 0; i < 4; i++) {
+      const to: CardLocation = { zone: 'foundation', pileIndex: i, cardIndex: 0 };
+      if (this.engine.canMove(this.gameState, from, to)) {
+        this.clearSelection();
+        this.tryMove(from, to);
+        return;
+      }
+    }
+  }
+
+  /** Attempt a move and update board if successful. */
+  private tryMove(from: CardLocation, to: CardLocation): void {
+    if (!this.gameState) return;
+
+    const result = this.engine.move(this.gameState, { type: 'move', from, to });
+
+    if (!('valid' in result)) {
+      this.gameState = result;
+      this.refreshBoard();
+
+      // Check win
+      if (this.engine.isWon(this.gameState)) {
+        this.handleWin();
+      }
+    }
+  }
+
+  /** Apply an externally-produced new state (e.g. from DragController). */
+  private applyState(newState: GameState): void {
+    this.gameState = newState;
+    this.refreshBoard();
+
+    if (this.engine.isWon(this.gameState)) {
+      this.handleWin();
+    }
+  }
+
+  /** Refresh board and stat displays after any state change. [DRY] */
+  private refreshBoard(): void {
+    if (!this.gameState || !this.boardLayout) return;
+    this.boardLayout.update(this.gameState);
+    this.updateDisplays();
+  }
+
+  /** Resolve a card element + pile element to a CardLocation. */
+  private resolveCardLocation(cardEl: HTMLElement, pileEl: HTMLElement): CardLocation | null {
+    const zone = pileEl.getAttribute('data-zone') as CardLocation['zone'] | null;
+    const pileIndex = Number(pileEl.getAttribute('data-pile-index') ?? 0);
+    const cardIndex = Number(cardEl.dataset['cardIndex'] ?? 0);
+
+    if (!zone) return null;
+    return { zone, pileIndex, cardIndex };
   }
 
   /** Handle game won state. */

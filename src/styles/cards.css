@@ -99,6 +99,13 @@
   color: var(--color-black-suit);
 }
 
+/* ── Non-interactive states ───────────────────────────────────────── */
+
+.card--face-down {
+  pointer-events: none;
+  cursor: default;
+}
+
 /* ── Interactive states ──────────────────────────────────────────── */
 
 .card--draggable {
@@ -120,18 +127,29 @@
   z-index: 10;
 }
 
-.card:hover {
-  z-index: 5;
-}
-
 /* ── Drag state ──────────────────────────────────────────────────── */
 
 .card--dragging {
-  opacity: 0.9;
-  transform: scale(1.05);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  z-index: 100;
-  will-change: transform;
+  position: fixed !important;
+  opacity: 0.92;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  pointer-events: none;
+  will-change: transform, left, top;
+  margin: 0 !important;
+  transition: none;
+}
+
+/* Ghost placeholder left in the pile while dragging */
+.card--drag-ghost {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* Drop target highlighting on piles */
+.pile--drop-target {
+  box-shadow: 0 0 16px 6px rgba(255, 215, 0, 0.5);
+  border-radius: var(--card-radius);
 }
 
 /* ── Animation performance ───────────────────────────────────────── */

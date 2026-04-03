@@ -78,7 +78,14 @@ describe('Module import chain [COVERAGE]', () => {
     expect(new ScoreKeeper()).toBeInstanceOf(ScoreKeeper);
     expect(new BoardLayout(new CardRenderer())).toBeInstanceOf(BoardLayout);
     expect(new CardRenderer()).toBeInstanceOf(CardRenderer);
-    expect(new DragController()).toBeInstanceOf(DragController);
+    expect(
+      new DragController(
+        document.createElement('div'),
+        new GameEngine(),
+        () => null,
+        () => {},
+      ),
+    ).toBeInstanceOf(DragController);
     expect(new EndGameReveal()).toBeInstanceOf(EndGameReveal);
     expect(new UIShell(document.createElement('div'))).toBeInstanceOf(UIShell);
   });

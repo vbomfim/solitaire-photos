@@ -60,15 +60,14 @@
   margin-top: 0;
 }
 
-/* Face-down cards overlap more (only ~25% visible) */
-.pile--tableau .card.card--face-down + .card,
+/* Face-down cards: ~82% covered, only ~18% visible (enough to see a card edge) */
 .pile--tableau .card.card--face-down:not(:first-child) {
-  margin-top: calc(var(--card-overlap) * -0.75);
+  margin-top: calc(var(--card-height) * -0.82);
 }
 
-/* Face-up cards fan more (only ~35% visible) */
+/* Face-up cards: ~77% covered, ~23% visible (enough to see rank + suit corner) */
 .pile--tableau .card.card--face-up:not(:first-child) {
-  margin-top: calc(var(--card-overlap) * -0.65);
+  margin-top: calc(var(--card-height) * -0.77);
 }
 
 /* First card in pile has no negative margin */
