@@ -8,6 +8,9 @@
 
 @import './variables.css';
 @import './reset.css';
+@import './cards.css';
+@import './board.css';
+@import './menu.css';
 
 /* ── Base ─────────────────────────────────────────── */
 html,
