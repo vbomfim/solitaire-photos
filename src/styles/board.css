@@ -21,23 +21,23 @@
 /* ── Top row: stock + waste + gap + foundations ───────────────────── */
 
 .board__top-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
   gap: var(--card-gap);
   align-items: flex-start;
 }
 
 .board__gap {
-  flex: 1;
-  min-width: var(--card-gap);
+  /* Occupies one grid column as spacer */
 }
 
 /* ── Tableau area: 7 columns ─────────────────────────────────────── */
 
 .board__tableau {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
   gap: var(--card-gap);
   align-items: flex-start;
-  justify-content: center;
 }
 
 /* ── Pile base ───────────────────────────────────────────────────── */
