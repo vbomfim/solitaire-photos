@@ -122,8 +122,8 @@
 }
 
 .card--selected {
-  outline: 3px solid var(--color-accent);
-  outline-offset: 2px;
+  transform: translateY(-8px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
   z-index: 10;
 }
 

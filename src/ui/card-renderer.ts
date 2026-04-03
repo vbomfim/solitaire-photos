@@ -76,9 +76,11 @@ function buildCardFaceSvg(suit: Suit, rank: Rank): string {
   return `<svg class="card__svg" viewBox="0 0 100 145" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <text x="8" y="22" font-size="16" fill="${color}" font-family="sans-serif" font-weight="bold">${label}</text>
     <text x="8" y="38" font-size="14" fill="${color}" font-family="sans-serif">${symbol}</text>
-    <text x="50" y="85" font-size="36" fill="${color}" font-family="sans-serif" text-anchor="middle" dominant-baseline="central">${symbol}</text>
-    <text x="92" y="135" font-size="16" fill="${color}" font-family="sans-serif" font-weight="bold" text-anchor="end" transform="rotate(180, 92, 127)">${label}</text>
-    <text x="92" y="119" font-size="14" fill="${color}" font-family="sans-serif" text-anchor="end" transform="rotate(180, 92, 111)">${symbol}</text>
+    <text x="50" y="80" font-size="36" fill="${color}" font-family="sans-serif" text-anchor="middle" dominant-baseline="central">${symbol}</text>
+    <g transform="rotate(180, 50, 72.5)">
+      <text x="8" y="22" font-size="16" fill="${color}" font-family="sans-serif" font-weight="bold">${label}</text>
+      <text x="8" y="38" font-size="14" fill="${color}" font-family="sans-serif">${symbol}</text>
+    </g>
   </svg>`;
 }
 

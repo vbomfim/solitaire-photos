@@ -119,6 +119,10 @@ export class DragController {
       if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) {
         return;
       }
+      // Clear any click-to-move selection when drag begins
+      this.boardContainer.querySelectorAll('.card--selected').forEach((el) => {
+        el.classList.remove('card--selected');
+      });
       this.startDragVisual();
     }
 
